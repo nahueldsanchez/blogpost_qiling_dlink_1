@@ -342,7 +342,7 @@ This option did not work as there is plenty of code executed and did not help to
 
 <li> 
 
-Then I moved to my second idea; I decided to check for the usage of potential insecure functions such as `strcpy`. [Again, this is straightforward with Qiling](https://docs.qiling.io/en/latest/hijack/#on-enter-interceptor-on-posix-function-with-qlset_api), we can hook functions and do whatever we want:
+Then I moved to my second idea: I decided to check for the usage of potential insecure functions such as `strcpy`. [Again, this is straightforward with Qiling](https://docs.qiling.io/en/latest/hijack/#on-enter-interceptor-on-posix-function-with-qlset_api), we can hook functions and do whatever we want:
 
 ```Python
 ...
@@ -413,14 +413,14 @@ gef➤  x/s $s1
 So our puzzle is complete. Sumarizing:
 <ol>
 
-<li> We send an HTTP POST request containing a COOKIE header. </li>
+<li> An HTTP POST request is sent containing a COOKIE header. </li>
 <li> The header must contain a `uid=`(BUFFER) string. </li>
 <li> A `strcpy` will copy (BUFFER) to the heap without checking for size. </li>
 <li> A `sprintf` will use our input as part of some string formating storing the result in a variable stored in the stack. If our buffer is large enough it will end up overwriting previously saved registers, including the return address.</li>
 </ol>
 
 
- To confirm the last point, I set up a breakpoint in the return instruction of the `hedwigcgi_main` function:
+ To check the last point, I set up a breakpoint in the return instruction of the `hedwigcgi_main` function:
 
 ```
 Breakpoint 1, 0x0040c594 in hedwigcgi_main ()
