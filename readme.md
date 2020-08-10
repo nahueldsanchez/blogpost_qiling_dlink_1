@@ -1,14 +1,16 @@
-# Analizing a buffer overflow in the DLINK DIR-645 with Qiling framework, Part I
+# Analyzing a buffer overflow in the DLINK DIR-645 with Qiling framework, Part I
 
 ## Introduction
 
-Over the last couple of weeks I've been playing with [Qiling framework](https://www.qiling.io/), a super interesting project that I recommend you to give a try.
+Over the last couple of weeks I've been playing with a super interesting project: [Qiling Framework](https://www.qiling.io/) --- I highly recommend you to give it a try. 
 
-As I think that the best way to learn is doing, I wanted to do a small practice with this framework. I've virtually attended to the workshop given by one of its creators, xwings at the [HITB conference](https://conference.hitb.org/hitb-lockdown002/virtual-labs/virtual-lab-qiling-framework-learn-how-to-build-a-fuzzer-based-on-a-1day-bug/) (by the way, amazing conference, with tons of contents for free, thanks to the organization for that!). Resuming the main topic, this blogpost will be based on what I learned there.
+I attended the virtual workshop given by xwings ---one of the creators --- at he [HITB conference](https://conference.hitb.org/hitb-lockdown002/virtual-labs/virtual-lab-qiling-framework-learn-how-to-build-a-fuzzer-based-on-a-1day-bug/) (amazing conference, by the way, with tons of content for free, thanks to the organization for that!). As I think that the best way to learn is by doing, I wanted to do some practice with this framework.
+
+This blogpost is based on what I learned in the workshop. 
 
 ## Objective
 
-My goal was to understand, reproduce and exploit one of the vulnerabilities reported by Roberto Paleari on 2013 (CVE-2013-7389). Now a 7-years vulnerability :P, affecting multiple DLINK routers, using Qiling and free tools. You can find the advisory [here](http://roberto.greyhats.it/advisories/20130801-dlink-dir645.txt).
+My goal was to understand, reproduce and exploit one of the vulnerabilities reported by Roberto Paleari in 2013 (CVE-2013-7389). Now a 7-year-old vulnerability :P, affecting multiple DLINK routers, using Qiling and free tools. You can find the advisory [here](http://roberto.greyhats.it/advisories/20130801-dlink-dir645.txt).
 
 I'll be focusing on the _Buffer overflow on "hedwig.cgi"_. For people familiar with MIPS and vulnerability analysis this will be very basic, but as I don't know almost anything about MIPS this was interesting and I've learned a lot. I hope you enjoy it.
 
