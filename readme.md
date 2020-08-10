@@ -10,7 +10,7 @@ This blogpost is based on what I learned in the workshop.
 
 ## Objective
 
-My goal was to understand, reproduce and exploit one of the vulnerabilities (CVE-2013-7389) reported by Roberto Paleari in 2013. Now a 7-year-old vulnerability :P affecting multiple DLINK routers, using Qiling and free tools. You can find the advisory [here](http://roberto.greyhats.it/advisories/20130801-dlink-dir645.txt).
+My goal was to understand, reproduce and exploit one of the vulnerabilities (CVE-2013-7389) reported by Roberto Paleari in 2013 —now a 7-year-old vulnerability :P affecting multiple DLINK routers, using Qiling and free tools. You can find the advisory [here](http://roberto.greyhats.it/advisories/20130801-dlink-dir645.txt).
 
 I'll focus on the _Buffer overflow on "hedwig.cgi"_. For people familiar with MIPS and vulnerability analysis this will be very basic, but since I don't know almost anything about MIPS this was interesting and I've learned a lot. I hope you enjoy it, too.
 
