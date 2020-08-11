@@ -456,7 +456,7 @@ It's clear that the `sprintf` copied our buffer and overwrote the previously sav
 
 Finally! We resolved the puzzle. It took me a great effort to put the pieces together and fully understand what was happening between the strcpy and the actual crash. I hope that you enjoyed the blogpost and found it useful!.
 
-I uploaded the Python script that I've been using during the blogpost as a reference. You can find it [here]().
+I uploaded the Python script that I've been using during the blogpost as a reference. You can find it [here](https://github.com/nahueldsanchez/blogpost_qiling_dlink_1/blob/master/src/emulate_cgibin.py).
 
 In the next part of this series, I'll continue working on how to write an exploit that works in Qiling!.
 
