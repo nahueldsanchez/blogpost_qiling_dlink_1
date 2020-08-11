@@ -1,42 +1,46 @@
-# Analizing a buffer overflow in the DLINK DIR-645 with Qiling framework, Part I
+# Analyzing a buffer overflow in the DLINK DIR-645 with Qiling framework, Part I
 
 ## Introduction
 
-Over the last couple of weeks I've been playing with [Qiling framework](https://www.qiling.io/), a super interesting project that I recommend you to give a try.
+Over the last couple of weeks I've been playing with a super interesting project: [Qiling Framework](https://www.qiling.io/) —I highly recommend you to give it a try. 
 
-As I think that the best way to learn is doing, I wanted to do a small practice with this framework. I've virtually attended to the workshop given by one of its creators, xwings at the [HITB conference](https://conference.hitb.org/hitb-lockdown002/virtual-labs/virtual-lab-qiling-framework-learn-how-to-build-a-fuzzer-based-on-a-1day-bug/) (by the way, amazing conference, with tons of contents for free, thanks to the organization for that!). Resuming the main topic, this blogpost will be based on what I learned there.
+I attended the virtual workshop given by xwings —one of the creators— at he [HITB conference](https://conference.hitb.org/hitb-lockdown002/virtual-labs/virtual-lab-qiling-framework-learn-how-to-build-a-fuzzer-based-on-a-1day-bug/) (amazing conference, by the way, with tons of content for free, thanks to the organization for that!). As I think that the best way to learn is by doing, I wanted to do some practice with this framework.
+
+This blogpost is based on what I learned in the workshop. 
 
 ## Objective
 
-My goal was to understand, reproduce and exploit one of the vulnerabilities reported by Roberto Paleari on 2013 (CVE-2013-7389). Now a 7-years vulnerability :P, affecting multiple DLINK routers, using Qiling and free tools. You can find the advisory [here](http://roberto.greyhats.it/advisories/20130801-dlink-dir645.txt).
+My goal was to understand, reproduce and exploit one of the vulnerabilities (CVE-2013-7389) reported by Roberto Paleari in 2013. Now a 7-year-old vulnerability :P affecting multiple DLINK routers, using Qiling and free tools. You can find the advisory [here](http://roberto.greyhats.it/advisories/20130801-dlink-dir645.txt).
 
-I'll be focusing on the _Buffer overflow on "hedwig.cgi"_. For people familiar with MIPS and vulnerability analysis this will be very basic, but as I don't know almost anything about MIPS this was interesting and I've learned a lot. I hope you enjoy it.
+I'll focus on the _Buffer overflow on "hedwig.cgi"_. For people familiar with MIPS and vulnerability analysis this will be very basic, but since I don't know almost anything about MIPS this was interesting and I've learned a lot. I hope you enjoy it, too.
 
 ## Overall idea
 
-My first step was to determine at high level what I wanted to acomplish, the final list was:
+The first step was to determine at high level what I wanted to acomplish: 
 
-1. Understand the vulnerability.
-2. Reproduce it.
-3. Identify the patch in the released firmware using Ghidra to perform patch diffing.
-4. Write an exploit for it while running the binary in Qiling (Available exploits work with the hardware or with Qemu)
-5. Improve and learn how to use Free RE tools.
+<ol>
+<li> Understand the vulnerability.  </li>
+<li> Reproduce it. </li>
+<li> Identify the patch in the released firmware using Ghidra to perform patch diffing. </li>
+<li> Write an exploit for it while running the binary on Qiling (Available exploits work with the hardware or with Qemu). </li>
+<li> Improve and learn how to use Free RE tools. <?li>
+</ol>
 
 Let's start with the first objective.
 
 ### Understanding the vulnerability
 
-Based on the advisory I had an overall idea about what to look for and a simple way to trigger the bug. Unfortunately, the  advisory did not provide further details of the binary affected nor the underlying cause of the buffer overflow.
+Based on the advisory I had an overall idea of what to look for and a simple way to trigger the bug. Unfortunately, the  advisory did not provide further details of the binary affected nor the underlying cause of the buffer overflow.
 
-With the information provided regarding the affected Firmware version, I looked up on Google and found the following [link](http://ftp.dlink.ru/pub/Router/DIR-645/Firmware/) to download the vulnerable firmware.
+With the information provided regarding the affected firmware version, I searched on Google [how to download the vulnerable firmware](http://ftp.dlink.ru/pub/Router/DIR-645/Firmware/). 
 
 Once downloaded, I used [binwalk](https://github.com/ReFirmLabs/binwalk) to decompress it.
 
-With the firmware decompressed, I rushed to load in Ghidra a binary called *httpd* located in the *sbin* directory. I lost some time looking there without any clue on where the bug could be.
+With the firmware decompressed, I rushed to load in Ghidra a binary called `httpd` located in the `sbin` directory. I lost some time looking there without any clue on where the bug could be.
 
-_Note: My tought process to conclude that the affected binary was that one was: The bug is located in the binary accepting HTTP connections, let's look it._
+> _Note: My tought process to conclude that the affected binary was that one was: The bug is located in the binary accepting HTTP connections, let's look it._
 
-I read the advisory again and looked for some binary called \*hedwig\*cgi
+I read the advisory again and looked for some binary called ` \*hedwig\*cgi `
 
 ```
 $ find . -name *hedwig*cgi
@@ -46,28 +50,29 @@ $ ls -larth ./htdocs/web/hedwig.cgi
 lrwxrwxrwx ./htdocs/web/hedwig.cgi -> /htdocs/cgibin
 ```
 
-As you can see there is a symlink called *hedwig.cgi* that points to the binary called *cgibin*. Let's analyze that one!.
+As you can see there is a symlink called `hedwig.cgi` that points to the binary called `cgibin`. Let's analyze that one!
 
-I loaded the binary in Ghidra and looked for the "hedwig.cgi" string:
+I loaded the binary in Ghidra and looked for the **hedwig.cgi** string:
 
 ![](images/strings.png)
 
-I checked where the string was used and landed here: (main function)
+I checked where the string was used and landed here (main function): 
 
 ![](images/string_usage.png)
 
-taking a look at the decompiled code:
+Taking a look at the decompiled code:
 
 ![](images/decompiled_string_usage.png)
 
-As you can see the binary takes a string and compares it against our string of interest, if they are equal, function **hedwigcgi_main** will be called. It took me some time to make this work as I thought that the string was taken as a parameter when calling the cgibin binary, but the string is taken from the name of the binary itself which then, makes sense to have a symlink with the name **hedwig.cgi**. To fix that I've created the same symlink in the *htdocs* directory:
+As you can see the binary takes a string and compares it against our string of interest, if they are equal, the function `hedwigcgi_main` will be called. 
+It took me some time to make this work because I thought that the string was taken as a parameter when calling the cgibin binary, but the string is taken from the name of the binary itself —then it makes sense to have a symlink with the name `hedwig.cgi`. To fix that I created the same symlink in the `htdocs` directory:
 
 ```
 squashfs-root/htdocs$ ls -larth hedwig.cgi
 hedwig.cgi -> cgibin
 ```
 
-At the beggining I just quickly fixed this using Qiling's hooking address capabilities, redirecting program flow from the first instruction to the function I was interested in. Something like this:
+At the beginning I just quickly fixed this using Qiling's hooking address capabilities, redirecting program flow from the first instruction to the function I was interested in. Something like this:
 
 ```Python
 MAIN_ADDR = 0x0402770
@@ -85,7 +90,7 @@ ql.hook_address(redirect_to_hedwigcgi_main, MAIN_ADDR)
 
 #### Finding the vulnerability in hedwingcgi_main function
 
-Once I've identified the vulnerable function I analyzed it taking into account the PoC provided by the researcher and the exploit available in [metasploit](https://github.com/rapid7/metasploit-framework/blob/master//modules/exploits/linux/http/dlink_hedwig_cgi_bof.rb). Both of them trigger the vulnerability in (more or less) the same way, this means, with the following HTTP request:
+Once I've identified the vulnerable function I analyzed it taking into account the PoC provided by the researcher and the exploit available in [metasploit](https://github.com/rapid7/metasploit-framework/blob/master//modules/exploits/linux/http/dlink_hedwig_cgi_bof.rb). Both of them trigger the vulnerability in (more or less) the same way, that is, making the following **HTTP request**:
 
 ```
 ...
@@ -93,16 +98,17 @@ POST /hedwig.cgi
 cookie: uid=(PAYLOAD)
 ...
 ```
-based on that I've did a quick search for the "uid" string as my guess was that there was some problem when parsing it:
+Based on that I did a quick search for the "uid" string as my guess was that there was some problem when parsing it:
 
 ![](images/uid_string.png)
 
-I've checked where it is referenced:
+I checked where it is referenced:
 
 ![](images/uid_references.png)
 
-The first and second references are inside a function called **sess_get_uid**, the last two are in a function that does not have symbols. I decided to focus in **sess_get_uid**, and check if this function was called from **hedwigcgi_main**.
-Another interesting option is to confirm that we are reaching these functions emulating the binary with Qiling. This is easy:
+The first and second references are inside a function called `sess_get_uid`, the last two are in a function that does not have symbols. I decided to focus on `sess_get_uid`, and check if this function was called from `hedwigcgi_main`.
+
+Another interesting option is to confirm that we are reaching these functions emulating the binary with Qiling:
 
 ```Python
 import sys
@@ -126,7 +132,7 @@ if __name__ == "__main__":
 
 ```
 
-And the output (just the important part):
+The output looks like this (just the important part):
 
 ```
 ...
@@ -142,7 +148,7 @@ Content-Type: text/xml
 ...
 ```
 
-We can see that the execution reached _main_ and _hedwigcgi_main_ but not (yet) _session_get_uid_. Let's take a look and find what we need to reach this function.
+We can see that the execution reached `_main_` and `_hedwigcgi_main_` but not (yet) `_session_get_uid_`. Let's take a look at the code and find what we need to reach this function.
 
 ```C
 ...
@@ -158,11 +164,11 @@ We can see that the execution reached _main_ and _hedwigcgi_main_ but not (yet) 
 ...
 ```
 
-Looking at the decompiled code generated by Ghidra (I was totally surprised about its quality, it's almost valid C code, I've just renamed some variables to make the code more readable) we can see that very early on function hedwigcgi_main, there is a check that looks for the value of an  environment variable called **REQUEST_METHOD**. If that variable doesn't contain the value **POST** (second IF clause), we'll never reach our desired function.
+Looking at the decompiled code generated by Ghidra (I was totally surprised about the quality, it's almost valid C code, I just renamed some variables to make the code more readable) we can see that very early on function `hedwigcgi_main`, there is a check that looks for the value of an  environment variable called `REQUEST_METHOD`. If that variable doesn't contain the value **POST** (second IF statement), we'll never reach our desired function.
 
-_Note: I've assumed that in the real hardware, for some reason these environment variables are already populated by  someone else and did not bother in checking who was doing it._
+>_Note: I've assumed that in the real hardware, for some reason these environment variables are already populated by  someone else and did not bother in checking who was doing it._
 
-Using [Qiling](https://docs.qiling.io/en/latest/howto/) magic it's easy to set environment variables:
+Using [Qiling](https://docs.qiling.io/en/latest/howto/) magic makes it easy to set environment variables:
 
 ```Python
 ...
@@ -199,19 +205,19 @@ fcntl(3, 2) = 0
 ...
 ```
 
-Good! now we are reaching our point of interest. After taking a look at the function and also checking the advisory I guessed that this function checked the value of the HTTP COOKIE header (again, reading an env. variable).
+Good! Now we are reaching our point of interest. After taking a look at the function and also checking the advisory I guessed that this function checked the value of the **HTTP COOKIE** header (again, reading an env. variable).
 
 ```C
 cookie_value = getenv("HTTP_COOKIE");
 ```
 
-and searched for the "uid" string, once found, it processed what came next to it. I guess the function accounted for mutiple values inside the cookie header, something like this:
+And then searched for the "uid" string; once found, it processed what came next to it. I guess the function accounted for mutiple values inside the cookie header, something like this:
 
 ```
 Cookie: Avalue=123;OtherVal=AAA;uid=TEST
 ```
 
-Taking a look at the exploit we can see that sending an HTTP requests with a Cookie header containing **uid=(enough_data)** will be sufficient to trigger the exploit. So we are in the right place.
+Taking a look at the exploit we can see that sending an HTTP request with a Cookie header containing `uid=(enough_data)` will be sufficient to trigger the exploit. So we are in the right place.
 
 Let's trigger the bug. For this, we will need to set the **HTTP_COOKIE** environment variable:
 
@@ -225,7 +231,7 @@ required_env = {
 ...
 ```
 
-This is the output after running our script. I've ommited parts of it for clarity:
+This is the output after running our script. I ommited parts of it for clarity:
 
 ```
 ...
@@ -264,9 +270,12 @@ This is the output after running our script. I've ommited parts of it for clarit
 unicorn.unicorn.UcError: Invalid memory read (UC_ERR_READ_UNMAPPED)
 ```
 
-As it's possible to see, we are triggering the bug!, looks like that the function is parsing our input and in some way mishandles it ending up copying it to a place where it does not fit and overwrites registers values previously saved. Let's confirm this. Now, that we have a clear idea where the bug is happening, let's find the exact place. To acomplish this I've tried different ideas:
+As it's possible to see, we are triggering the bug! It looks like the function is parsing our input and in some way mishandles it ending up copying it to a place where it does not fit and overwrites register's values previously saved. Let's check this. Now that we have a clear idea where the bug is, let's find the exact place. To do this I tried different ideas:
 
-0) Debug!. It's possible to debug the binary using GDB. I did have some issues when I first tried to make this idea work and I opened an [issue](https://github.com/qilingframework/qiling/issues/415) and promply had an answer that worked. We'll use this alternative along with option 2. To debug we just need to do the following:
+<ul>
+<li> Debug! It's possible to debug the binary using GDB. I did have some issues when I first tried to make this idea work and I opened an [issue](https://github.com/qilingframework/qiling/issues/415) and promptly had an answer that worked. We'll use this alternative along with second option. 
+
+To debug we just need to do the following:
 
 ```Python
 ...
@@ -306,8 +315,8 @@ GDB will be unable to debug shared library initializers
 and track explicitly loaded dynamic code.
 0x004025c0 in _ftext ()
 ```
-
-1) Print every instruction until the exception is raised, this is easy to do with Qiling. We'll define a callback function that will print every instruction that's executed. We'll hook this callback to the beggining of **sess_get_uid**.
+ 
+Print every instruction until the exception is raised, this is easy to do with Qiling. We'll define a callback function that will print every instruction that's executed. We'll hook this callback to the beggining of `sess_get_uid`.
 
 ```Python
 ...
@@ -327,9 +336,13 @@ def  hook_sess_get_uid(ql):
 ql.hook_address(hook_sess_get_uid, SESS_GET_UID)
 
 ```
-This option did not work as there is plenty of code executed and did not help identifying the exact place where the out of bounds write happened. Also it could happen that the memory corruption happens at place X and registers are overwrite at place Y (when executing the ret instruction).
+This option did not work as there is plenty of code executed and did not help to identtify the exact place where the out-of-bounds write happened. Also it could happen that the memory corruption happens at place X and registers are overwritten at place Y (when executing the ret instruction). </li></ol>
 
-2) Then I've moved to my second idea, I decided to check for the usage of potential insecure functions such as **strcpy**. [Again, this is straightforward with Qiling](https://docs.qiling.io/en/latest/hijack/#on-enter-interceptor-on-posix-function-with-qlset_api), we can hook functions and do whatever we want:
+</ol>
+
+<li> 
+
+Then I moved to my second idea: I decided to check for the usage of potential insecure functions such as `strcpy`. [Again, this is straightforward with Qiling](https://docs.qiling.io/en/latest/hijack/#on-enter-interceptor-on-posix-function-with-qlset_api), we can hook functions and do whatever we want:
 
 ```Python
 ...
@@ -357,9 +370,12 @@ src: b'AAAAAAAAAAAAAAAAAA...AAA'
 [+] PC = 0x41414140
 ```
 
-Excellent, now we know where our buffer is being written (0x437898) and also that strcpy is somehow involved.
+Excellent. Now we know where our buffer is being written (0x437898) and also that strcpy is somehow involved.
 
-When I first found this I was very happy as I thougt that this strcpy was the root cause of the crash. But if you check the destination address, **0x437898**  it's in the heap address space:
+</li>
+</ul>
+
+When I first found this I was very happy as I thought that this **strcpy** was the root cause of the crash. But if you check the destination address, **0x437898**  is in the heap address space:
 
 ```
 ...
@@ -367,11 +383,11 @@ When I first found this I was very happy as I thougt that this strcpy was the ro
 ...
 ```
 
-Also if we take a look at where the strcpy is copying the data, we will find that at the beggining of the **sess_get_uid** function we have some calls to function **sobj_new**, that between other things it returns a pointer to a memory allocated with malloc (heap).
+Also if we take a look at where the strcpy is copying the data, we will find that at the beginning of the `sess_get_uid` function we have some calls to  the `sobj_new` function. This, among other things, returns a pointer to a memory allocated with malloc (heap).
 
-So, my question was if our destination address for the strcpy is **0x437898** and which is the heap, and the program is crashing because the Program Counter (PC) points to an invalid address... What's going on? Somehow the our overly long string has to end up overwriting something in the stack, but clearly that's not happening right after the strcpy. I had to debug this several hours to completely understand what was happening.
+So, my question was: if our destination address for the strcpy is **0x437898** —which is the heap— and the program is crashing because the Program Counter (PC) points to an invalid address... What's going on? Somehow the our overly long string has to end up overwriting something in the stack, but clearly that's not happening right after the strcpy. I had to debug this several hours to completely understand what was happening.
 
-The answer is that at address **0x0040c1c0** there is a call to **sprintf**. This function receives as parameters three strings as we can see in the following snippet:
+The answer is that at address **0x0040c1c0** there is a call to `sprintf`. This function receives three strings as parameters, as we can see in the following snippet:
 
 ```
 0040c1b4 21 38 40 00     move       a3,v0
@@ -380,28 +396,31 @@ The answer is that at address **0x0040c1c0** there is a call to **sprintf**. Thi
 
 ```
 
-register $a3 points to our buffer:
+register `$a3` points to our buffer:
 
 ```
 gef➤  x/s $a3
 0x437898:	"b'", 'A' <repeats 2000 times>, "'"
 ```
 
-sprintf will format the string passed as arguments using the format specified and our buffer, what's more important is that, the destination is a local variable IN THE STACK!:
+`sprintf` will format the string passed as arguments using the format specified and our buffer. What's more important is that the destination is a local variable **IN THE STACK!:**
 
 ```
 gef➤  x/s $s1
 0x7ff3c1e0:	"/runtime/session/b'", 'A' <repeats 2000 times>, "'/postxml"
 ```
 
-So our puzzle is complete. Summarizing:
+So our puzzle is complete. Sumarizing:
+<ol>
 
-1. We send an HTTP POST request containing a COOKIE header.
-2. the header must contain a uid=(BUFFER) string.
-3. A strcpy will copy (BUFFER) to the heap without checking for size.
-4. a sprintf will use our input as part of some string formating storing the result in a variable stored in the stack. If our buffer is large enough it will end up overwriting previously saved registers, including the return address.
+<li> An HTTP POST request is sent containing a COOKIE header. </li>
+<li> The header must contain a `uid=`(BUFFER) string. </li>
+<li> A `strcpy` will copy (BUFFER) to the heap without checking for size. </li>
+<li> A `sprintf` will use our input as part of some string formating storing the result in a variable stored in the stack. If our buffer is large enough it will end up overwriting previously saved registers, including the return address.</li>
+</ol>
 
- To confirm the last point, I've set up a breakpoint in the return instruction of function **hedwigcgi_main**:
+
+ To check the last point, I set up a breakpoint in the return instruction of the `hedwigcgi_main` function:
 
 ```
 Breakpoint 1, 0x0040c594 in hedwigcgi_main ()
@@ -431,13 +450,13 @@ $ra  : 0x41414141 ("AAAA"?)
 →   0x40c594 <hedwigcgi_main+1492> jr     ra
 ```
 
-It's clear that the sprintf copied our buffer and overwrote the previously saved registers with our input. From here it should be easy to gaing reliable code execution as we can control the $PC.
+It's clear that the `sprintf` copied our buffer and overwrote the previously saved registers with our input. From here it should be easy to gain reliable code execution as we can control the $PC.
 
-## Conclusion
+# Conclusion
 
-Finally! we have resolve the puzzle. It took me great effort to join the pieces and fully understand what was happening between the strcpy and the actual crash. I hope that you enjoyed the blogpost and found it useful!.
+Finally! We resolved the puzzle. It took me a great effort to put the pieces together and fully understand what was happening between the strcpy and the actual crash. I hope that you enjoyed the blogpost and found it useful!.
 
-I've uploaded the Python script that I've been using during the blogpost as a reference. You can find it [here]().
+I uploaded the Python script that I've been using during the blogpost as a reference. You can find it [here]().
 
 In the next part of this series, I'll continue working on how to write an exploit that works in Qiling!.
 
