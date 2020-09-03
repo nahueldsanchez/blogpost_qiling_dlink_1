@@ -423,10 +423,10 @@ gef➤  x/s $s1
 
 So our puzzle is complete. Summarizing:
 
-+ We send an HTTP POST request containing a COOKIE header.
-+ The header must contain a `uid=`(BUFFER) string. </li>
-+ A `strcpy` will copy (BUFFER) to the heap without checking for size. 
-+ A `sprintf` will use our input as part of some string formatting assigning the result to a variable stored in the stack. If our buffer is not large enough it will end up overwriting previously saved registers, including the return address.
+:white_check_mark: We send an HTTP POST request containing a COOKIE header.  
+:white_check_mark: The header must contain a `uid=`(BUFFER) string.    
+:white_check_mark: A `strcpy` will copy (BUFFER) to the heap without checking for size.   
+:white_check_mark: A `sprintf` will use our input as part of some string formatting assigning the result to a variable stored in the stack. If our buffer is not large enough it will end up overwriting previously saved registers, including the return address.
 
 
  To confirm the last point, I set up a breakpoint in the return instruction of the `hedwigcgi_main` function:
