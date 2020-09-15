@@ -473,6 +473,8 @@ In the next part of this series, I'll continue working on how to write an exploi
 
 Stay tuned. 
 
+:zap: **Read the second part of** [Analyzing a buffer overflow in the DLINK DIR-645 with Qiling framework](https://github.com/nahueldsanchez/blogpost_qiling_dlink_2)
+
 # References
 
 'Original advisory', https://web.archive.org/web/20140418120534/http://securityadvisories.dlink.com/security/publication.aspx?name=SAP10008
