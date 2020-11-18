@@ -79,6 +79,8 @@ squashfs-root/htdocs$ ls -larth hedwig.cgi
 hedwig.cgi -> cgibin
 ```
 
+*Update*: Thanks to [Matr1X-00 I](https://github.com/nahueldsanchez/blogpost_qiling_dlink_1/issues/4) I learned that, currently, Qiling does not support symlinks.
+
 At the beginning I just quickly fixed this using Qiling's hooking address capabilities, redirecting program flow from the first instruction to the function I was interested in. Something like this:
 
 ```Python
